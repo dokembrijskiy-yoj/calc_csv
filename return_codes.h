@@ -1,0 +1,16 @@
+#ifndef HEADER_RETURN_CODES_H
+#define HEADER_RETURN_CODES_H
+
+enum return_code
+{
+    RC_SUCCESS = 0,
+    RC_BAD_FILE_FORMAT,
+    RC_OVERFLOW,
+    RC_TOO_BIG,
+    RC_NO_INPUT,
+    RC_NOT_FOUND,
+    RC_BAD_REFERENCE,
+    RC_DIV_BY_ZERO
+};
+
+#endif
