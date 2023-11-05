@@ -14,7 +14,7 @@ enum exit_status
     ES_INTERNAL = 3
 };
 
-static const char *program_name = "csv_file";
+static const char *program_name = "calc_csv";
 
 
 void check_first_column(int **A, size_t num_lines, const char *file_name)
