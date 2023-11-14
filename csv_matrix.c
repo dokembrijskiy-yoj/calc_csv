@@ -173,7 +173,7 @@ int read_arg(FILE *input, int **A, size_t n_lines, size_t n_columns, int *arg)
     {
         unsigned int column_code = symb;
         symb = getc(input);
-        if(!isdigit(symb))
+        if (!isdigit(symb))
         {
             while(isalpha(symb))
             {
@@ -184,13 +184,13 @@ int read_arg(FILE *input, int **A, size_t n_lines, size_t n_columns, int *arg)
         ungetc(symb, input);
         int line_number;
         err = read_number(input, &line_number);
-        if(err == RC_OVERFLOW)
+        if (err == RC_OVERFLOW)
             err = RC_TOO_BIG;
         if(err)
             return err;
 
         err = find_field(A, n_lines, n_columns, line_number, column_code, arg);
-        if(err)
+        if (err)
             return err;
     }
     else
@@ -206,9 +206,20 @@ int read_arg(FILE *input, int **A, size_t n_lines, size_t n_columns, int *arg)
     return 0;
 }
 
+
+static void csv_skip_cell(FILE *input, int *symb)
+{
+    while (*symb != ',' && *symb != '\n' && *symb != EOF)
+    {
+        *symb = getc(input);
+    }
+}
+
+
 int calc_csv_matrix(FILE *input, int **A, size_t n_lines, size_t n_columns, size_t *err_line, size_t *err_column)
 {
     int err;
+    bool has_undefined = false;
 
     int symb;
 
@@ -226,10 +237,21 @@ int calc_csv_matrix(FILE *input, int **A, size_t n_lines, size_t n_columns, size
         {
         case '=':
             err = read_arg(input, A, n_lines, n_columns, &arg1);
-            if (err) {
+            if (err)
+            {
                 *err_line = i + 1;
                 *err_column = j + 1;
-                return err;
+
+                if (err == RC_BAD_REFERENCE)
+                {
+                    has_undefined = true;
+                    csv_skip_cell(input, &symb);
+                    break;
+                }
+                else
+                {
+                    return err;
+                }
             }
             math_op = getc(input);
             if ((math_op != '+') && (math_op != '-') && (math_op != '*') && (math_op != '/'))
@@ -244,10 +266,20 @@ int calc_csv_matrix(FILE *input, int **A, size_t n_lines, size_t n_columns, size
             {
                 *err_line = i + 1;
                 *err_column = j + 1;
-                return err;
+
+                if (err == RC_BAD_REFERENCE)
+                {
+                    has_undefined = true;
+                    csv_skip_cell(input, &symb);
+                    break;
+                }
+                else
+                {
+                    return err;
+                }
             }
             err = calc_expression(math_op, arg1, arg2, &A[i][j]);
-            if(err)
+            if (err)
             {
                 *err_line = i + 1;
                 *err_column = j + 1;
@@ -256,10 +288,7 @@ int calc_csv_matrix(FILE *input, int **A, size_t n_lines, size_t n_columns, size
             symb = getc(input);
             break;
         default:
-            while (symb != ',' && symb != '\n' && symb != EOF)
-            {
-                symb = getc(input);
-            }
+            csv_skip_cell(input, &symb);
         }
         if (symb == EOF)
         {
@@ -281,6 +310,11 @@ int calc_csv_matrix(FILE *input, int **A, size_t n_lines, size_t n_columns, size
                 *err_column = j + 1;
                 return RC_BAD_FILE_FORMAT;
         }
+    }
+
+    if (has_undefined)
+    {
+        return RC_BAD_REFERENCE;
     }
 
     return 0;

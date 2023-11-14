@@ -137,45 +137,56 @@ int main(int argc, char *argv[])
 
     //print_matrix(A, num_lines, num_columns);
 
-    rewind_file(csv_file, file_name);
-
-    err = calc_csv_matrix(csv_file, A, num_lines, num_columns, &err_line, &err_column);
-    switch(err)
+    unsigned long long num_passes = 0;
+    for(;;)
     {
-        case 0:
+        rewind_file(csv_file, file_name);
+
+        err = calc_csv_matrix(csv_file, A, num_lines, num_columns, &err_line, &err_column);
+        if (!err)
+        {
             break;
-        case RC_BAD_FILE_FORMAT:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: syntax error.\n",
+        }
+        switch(err)
+        {
+            case RC_BAD_REFERENCE:
+                break;
+            case RC_BAD_FILE_FORMAT:
+                fprintf(stderr, "%s: %s: %zu: error in field #%zu: syntax error.\n",
+                        program_name, file_name, err_line, err_column);
+                status = ES_BAD_INPUT;
+                goto end;
+            case RC_OVERFLOW:
+                fprintf(stderr, "%s: %s: %zu: error in field #%zu: result is out of "
+                        "range [%d,%d].\n", program_name, file_name, err_line,
+                        err_column, CSV_MATRIX_MIN, CSV_MATRIX_MIN);
+                status = ES_ENV_ERROR;
+                goto end;
+            case RC_TOO_BIG:
+                fprintf(stderr, "%s: %s: %zu: error in field #%zu: number is out of "
+                        "range [%d,%d].\n", program_name, file_name, err_line,
+                        err_column, CSV_MATRIX_MIN, CSV_MATRIX_MIN);
+                status = ES_ENV_ERROR;
+                goto end;
+            case RC_DIV_BY_ZERO:
+                fprintf(stderr, "%s: %s: %zu: error in field #%zu: division by zero.\n",
+                        program_name, file_name, err_line, err_column);
+                status = ES_BAD_INPUT;
+                goto end;
+            case RC_NOT_FOUND:
+                fprintf(stderr, "%s: %s: %zu: error in field #%zu: undefined reference.\n",
+                        program_name, file_name, err_line, err_column);
+                status = ES_BAD_INPUT;
+                goto end;
+        }
+        num_passes++;
+        if (num_passes / num_lines > num_columns)
+        {
+            fprintf(stderr, "%s: %s: %zu: error in field #%zu: circular reference.\n",
                     program_name, file_name, err_line, err_column);
             status = ES_BAD_INPUT;
             goto end;
-        case RC_OVERFLOW:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: result is out of "
-                    "range [%d,%d].\n", program_name, file_name, err_line,
-                    err_column, CSV_MATRIX_MIN, CSV_MATRIX_MIN);
-            status = ES_ENV_ERROR;
-            goto end;
-        case RC_TOO_BIG:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: number is out of "
-                    "range [%d,%d].\n", program_name, file_name, err_line,
-                    err_column, CSV_MATRIX_MIN, CSV_MATRIX_MIN);
-            status = ES_ENV_ERROR;
-            goto end;
-        case RC_DIV_BY_ZERO:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: division by zero.\n",
-                    program_name, file_name, err_line, err_column);
-            status = ES_BAD_INPUT;
-            goto end;
-        case RC_NOT_FOUND:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: undefined reference.\n",
-                    program_name, file_name, err_line, err_column);
-            status = ES_BAD_INPUT;
-            goto end;
-        case RC_BAD_REFERENCE:
-            fprintf(stderr, "%s: %s: %zu: error in field #%zu: reference to expression.\n",
-                    program_name, file_name, err_line, err_column);
-            status = ES_BAD_INPUT;
-            goto end;
+        }
     }
 
     rewind_file(csv_file, file_name);
